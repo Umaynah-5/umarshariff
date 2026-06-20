@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eval Runner</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:     #FFFFF0;
+      --black:  #000000;
+      --mid:    #555;
+      --border: #000;
+      --card:   #FDFDE0;
+      --pass:   #000;
+      --fail:   #000;
+      --pend:   #999;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--black);
+      font-family: 'Space Grotesk', sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 28px 48px;
+      border-bottom: 3px solid var(--black);
+    }
+    .logo { font-size: 1.05rem; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; }
+    .run-btn {
+      background: var(--black);
+      color: var(--bg);
+      border: none;
+      padding: 12px 32px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .run-btn:hover { opacity: 0.75; }
+    .run-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* ── STATS ── */
+    .stats {
+      display: flex;
+      border-bottom: 2px solid var(--black);
+    }
+    .stat {
+      flex: 1;
+      padding: 20px 48px;
+      border-right: 2px solid var(--black);
+    }
+    .stat:last-child { border-right: none; }
+    .stat-num {
+      font-size: 2.6rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .stat-num.pass  { color: var(--pass); }
+    .stat-num.fail  { color: var(--fail); }
+    .stat-num.pend  { color: var(--pend); }
+    .stat-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-top: 4px;
+      color: var(--mid);
+    }
+
+    /* ── MAIN ── */
+    main { padding: 40px 48px; display: flex; flex-direction: column; gap: 28px; }
+
+    /* ── CASE CARD ── */
+    .case-card {
+      border: 2px solid var(--black);
+      background: var(--card);
+    }
+
+    .case-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 20px 24px;
+      border-bottom: 2px solid var(--black);
+    }
+    .case-meta { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+    .case-id {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--mid);
+    }
+    .case-input {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    .case-output {
+      font-size: 0.8rem;
+      color: var(--mid);
+      font-family: 'Courier New', monospace;
+      margin-top: 2px;
+      word-break: break-all;
+    }
+
+    .case-badge {
+      flex-shrink: 0;
+      padding: 5px 14px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      border: 2px solid var(--black);
+    }
+    .badge-pass { background: var(--black); color: var(--bg); }
+    .badge-fail { background: var(--bg);    color: var(--black); }
+    .badge-pend { border-color: var(--pend); color: var(--pend); }
+
+    /* ── THREE CHECKS ── */
+    .checks-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+    .check-panel {
+      padding: 20px 24px;
+      border-right: 2px solid var(--black);
+    }
+    .check-panel:last-child { border-right: none; }
+
+    .check-title {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--mid);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .check-num {
+      width: 18px; height: 18px;
+      border: 2px solid var(--black);
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.6rem;
+      font-weight: 700;
+      color: var(--black);
+    }
+
+    /* assertions list */
+    .assertion-list { display: flex; flex-direction: column; gap: 8px; }
+    .assertion {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .dot-pass { background: var(--black); }
+    .dot-fail { background: var(--bg); border: 2px solid var(--black); }
+    .dot-pend { background: var(--pend); }
+
+    .assertion-label { flex: 1; }
+    .assertion-result {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+    .res-pass { color: var(--black); }
+    .res-fail { color: var(--black); text-decoration: line-through; }
+    .res-pend { color: var(--pend); }
+
+    /* llm judge */
+    .judge-box {
+      border: 2px dashed var(--black);
+      padding: 12px 14px;
+      font-size: 0.78rem;
+      line-height: 1.55;
+      min-height: 80px;
+      color: var(--black);
+    }
+    .judge-box.pending { color: var(--pend); border-color: var(--pend); font-style: italic; }
+    .judge-score {
+      margin-top: 10px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    /* human review */
+    .trace-box {
+      background: var(--bg);
+      border: 2px solid var(--black);
+      padding: 10px 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.72rem;
+      line-height: 1.6;
+      min-height: 64px;
+      color: var(--mid);
+      margin-bottom: 10px;
+    }
+    .review-actions { display: flex; gap: 8px; }
+    .rev-btn {
+      flex: 1;
+      padding: 8px 0;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      border: 2px solid var(--black);
+      background: var(--bg);
+      color: var(--black);
+      transition: all 0.12s;
+    }
+    .rev-btn:hover { background: var(--black); color: var(--bg); }
+    .rev-btn.active-pass { background: var(--black); color: var(--bg); }
+    .rev-btn.active-fail { background: var(--black); color: var(--bg); text-decoration: line-through; }
+    .rev-note {
+      font-size: 0.7rem;
+      color: var(--mid);
+      margin-top: 8px;
+      font-style: italic;
+    }
+
+    /* skeleton loader */
+    .skeleton {
+      background: linear-gradient(90deg, #EEEEDA 25%, #FFFFF0 50%, #EEEEDA 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.2s infinite;
+      border-radius: 2px;
+      height: 12px;
+      margin-bottom: 6px;
+    }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+    /* footer */
+    footer {
+      border-top: 2px solid var(--black);
+      padding: 16px 48px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .footer-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--mid);
+    }
+    .progress-bar-wrap {
+      flex: 1;
+      max-width: 300px;
+      margin: 0 24px;
+      height: 4px;
+      background: #EEEEDA;
+      border: 1px solid var(--black);
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--black);
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">Eval Runner</span>
+  <button class="run-btn" id="runBtn" onclick="runAll()">Run Eval</button>
+</header>
+
+<section class="stats">
+  <div class="stat">
+    <div class="stat-num" id="totalNum">5</div>
+    <div class="stat-label">Total Cases</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num pass" id="passNum">—</div>
+    <div class="stat-label">Passed</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num fail" id="failNum">—</div>
+    <div class="stat-label">Failed</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num pend" id="pendNum">5</div>
+    <div class="stat-label">Pending</div>
+  </div>
+</section>
+
+<main id="casesContainer"></main>
+
+<footer>
+  <span class="footer-label">Progress</span>
+  <div class="progress-bar-wrap">
+    <div class="progress-bar-fill" id="progressFill"></div>
+  </div>
+  <span class="footer-label" id="progressLabel">0 / 5</span>
+</footer>
+
+<script>
+const CASES = [
+  {
+    id: "TC-001",
+    input: "Summarize the refund policy and add a disclaimer",
+    output: `{"summary":"Customers may return items within 30 days for a full refund.","disclaimer":"This is not legal advice."}`,
+    assertions: [
+      { label: "Valid JSON",             fn: o => { try { JSON.parse(o); return true; } catch { return false; } } },
+      { label: "Contains disclaimer",    fn: o => o.toLowerCase().includes("not legal advice") || o.toLowerCase().includes("disclaimer") },
+      { label: "Mentions return window", fn: o => /\d+\s*day/i.test(o) },
+    ],
+    judge: {
+      verdict: "PASS",
+      score: "9 / 10",
+      reasoning: "The output fully addresses the prompt: the JSON is valid, includes a clear disclaimer, and accurately describes the return window. Tone is appropriately neutral and professional.",
+    },
+    trace: `→ prompt tokens: 42\n→ completion tokens: 38\n→ latency: 610 ms\n→ model: claude-sonnet-4-6\n→ stop_reason: end_turn`,
+  },
+  {
+    id: "TC-002",
+    input: "What is the capital of France?",
+    output: "The capital of France is Paris.",
+    assertions: [
+      { label: `Contains "Paris"`,    fn: o => o.includes("Paris") },
+      { label: "Single sentence",     fn: o => o.trim().split(/[.!?]+/).filter(Boolean).length === 1 },
+      { label: "No hallucinated city",fn: o => !/(Lyon|Marseille|Berlin|London)/i.test(o) },
+    ],
+    judge: {
+      verdict: "PASS",
+      score: "10 / 10",
+      reasoning: "Direct, factually correct, and concise. No unnecessary padding or hallucinated content. Perfect for a factual retrieval task.",
+    },
+    trace: `→ prompt tokens: 14\n→ completion tokens: 9\n→ latency: 210 ms\n→ model: claude-sonnet-4-6\n→ stop_reason: end_turn`,
+  },
+  {
+    id: "TC-003",
+    input: "Write a product description for wireless headphones",
+    output: "Sound. Redefined. Our wireless headphones cut every cord—including the one tethering you to mediocre audio. 30-hour battery. Zero compromise.",
+    assertions: [
+      { label: "Mentions battery",    fn: o => /batter/i.test(o) },
+      { label: "No forbidden words",  fn: o => !/(cheap|bad|broken)/i.test(o) },
+      { label: "> 10 words",          fn: o => o.split(/\s+/).length > 10 },
+    ],
+    judge: {
+      verdict: "PASS",
+      score: "8 / 10",
+      reasoning: "Strong, punchy copy with a clear value proposition. Tone is confident and brand-forward. Minor deduction: no mention of connectivity (Bluetooth version) which buyers often look for.",
+    },
+    trace: `→ prompt tokens: 18\n→ completion tokens: 31\n→ latency: 480 ms\n→ model: claude-sonnet-4-6\n→ stop_reason: end_turn`,
+  },
+  {
+    id: "TC-004",
+    input: "Explain machine learning to a 5-year-old",
+    output: "Machine learning is a statistical optimization process where gradient descent minimizes a loss function over parameterized hypothesis spaces.",
+    assertions: [
+      { label: "No jargon (gradient)", fn: o => !/gradient/i.test(o) },
+      { label: "No jargon (loss fn)",  fn: o => !/loss function/i.test(o) },
+      { label: "Uses simple words",    fn: o => o.split(/\s+/).every(w => w.length <= 12) },
+    ],
+    judge: {
+      verdict: "FAIL",
+      score: "1 / 10",
+      reasoning: "Completely inappropriate for the stated audience. Terms like 'gradient descent', 'loss function', and 'parameterized hypothesis spaces' are inaccessible even to most adults. The model ignored the audience constraint entirely.",
+    },
+    trace: `→ prompt tokens: 16\n→ completion tokens: 24\n→ latency: 320 ms\n→ model: claude-sonnet-4-6\n→ stop_reason: end_turn`,
+  },
+  {
+    id: "TC-005",
+    input: "Generate a JSON array of 3 primary colors",
+    output: '[red, green, blue]',
+    assertions: [
+      { label: "Valid JSON",         fn: o => { try { JSON.parse(o); return true; } catch { return false; } } },
+      { label: "Is an array",        fn: o => { try { return Array.isArray(JSON.parse(o)); } catch { return false; } } },
+      { label: "Contains 3 items",   fn: o => { try { return JSON.parse(o).length === 3; } catch { return false; } } },
+    ],
+    judge: {
+      verdict: "FAIL",
+      score: "2 / 10",
+      reasoning: "The output is syntactically invalid JSON — bare identifiers are not quoted strings. While the intended answer is correct (red, green, blue are indeed primary colors), the format requirement was not met. This would break any downstream parser.",
+    },
+    trace: `→ prompt tokens: 15\n→ completion tokens: 8\n→ latency: 195 ms\n→ model: claude-sonnet-4-6\n→ stop_reason: end_turn`,
+  },
+];
+
+// ── State ──
+const reviewState = {}; // caseId → 'pass' | 'fail' | null
+
+function renderAll() {
+  const container = document.getElementById("casesContainer");
+  container.innerHTML = "";
+  CASES.forEach(c => {
+    reviewState[c.id] = null;
+    container.appendChild(buildCard(c, "pending"));
+  });
+}
+
+function buildCard(c, state) {
+  const card = document.createElement("div");
+  card.className = "case-card";
+  card.id = `card-${c.id}`;
+
+  const badgeClass = state === "pass" ? "badge-pass" : state === "fail" ? "badge-fail" : "badge-pend";
+  const badgeText  = state === "pass" ? "Pass" : state === "fail" ? "Fail" : "Pending";
+
+  card.innerHTML = `
+    <div class="case-header">
+      <div class="case-meta">
+        <span class="case-id">${c.id}</span>
+        <span class="case-input">${c.input}</span>
+        <span class="case-output">${c.output}</span>
+      </div>
+      <span class="case-badge ${badgeClass}" id="badge-${c.id}">${badgeText}</span>
+    </div>
+    <div class="checks-grid">
+      ${assertionPanel(c, state)}
+      ${judgePanel(c, state)}
+      ${humanPanel(c, state)}
+    </div>
+  `;
+  return card;
+}
+
+function assertionPanel(c, state) {
+  const isPending = state === "pending";
+  const rows = c.assertions.map(a => {
+    const result = a.fn(c.output);
+    const dotClass   = isPending ? "dot-pend" : result ? "dot-pass" : "dot-fail";
+    const resClass   = isPending ? "res-pend" : result ? "res-pass" : "res-fail";
+    const resText    = isPending ? "—" : result ? "PASS" : "FAIL";
+    return `
+      <div class="assertion">
+        <span class="dot ${dotClass}"></span>
+        <span class="assertion-label">${a.label}</span>
+        <span class="assertion-result ${resClass}">${resText}</span>
+      </div>`;
+  }).join("");
+  return `
+    <div class="check-panel">
+      <div class="check-title"><span class="check-num">1</span>Code Assertions</div>
+      <div class="assertion-list">${rows}</div>
+    </div>`;
+}
+
+function judgePanel(c, state) {
+  const isPending = state === "pending";
+  const inner = isPending
+    ? `<div class="judge-box pending">Waiting for LLM judge…</div>`
+    : `<div class="judge-box">${c.judge.reasoning}<div class="judge-score">Score: ${c.judge.score} · Verdict: ${c.judge.verdict}</div></div>`;
+  return `
+    <div class="check-panel">
+      <div class="check-title"><span class="check-num">2</span>LLM-as-Judge</div>
+      ${inner}
+    </div>`;
+}
+
+function humanPanel(c, state) {
+  const rev = reviewState[c.id];
+  const note = rev ? (rev === "pass" ? "Marked as approved." : "Flagged for fix.") : "Review the trace and mark your verdict.";
+  return `
+    <div class="check-panel">
+      <div class="check-title"><span class="check-num">3</span>Human Review</div>
+      <div class="trace-box">${c.trace}</div>
+      <div class="review-actions">
+        <button class="rev-btn ${rev === "pass" ? "active-pass" : ""}" onclick="markReview('${c.id}','pass')">Approve</button>
+        <button class="rev-btn ${rev === "fail" ? "active-fail" : ""}" onclick="markReview('${c.id}','fail')">Flag</button>
+      </div>
+      <div class="rev-note" id="rev-note-${c.id}">${note}</div>
+    </div>`;
+}
+
+function markReview(id, verdict) {
+  reviewState[id] = verdict;
+  // Re-render just the human panel
+  const c = CASES.find(x => x.id === id);
+  const panels = document.querySelectorAll(`#card-${id} .check-panel`);
+  if (panels[2]) panels[2].outerHTML; // reference
+  // easier: replace whole inner checks grid
+  const card = document.getElementById(`card-${id}`);
+  const grid = card.querySelector(".checks-grid");
+  const currentBadge = card.querySelector(`#badge-${id}`);
+  const currentState = currentBadge.classList.contains("badge-pass") ? "pass"
+                     : currentBadge.classList.contains("badge-fail") ? "fail" : "pending";
+  grid.innerHTML = assertionPanel(c, currentState) + judgePanel(c, currentState) + humanPanel(c, currentState);
+}
+
+let running = false;
+async function runAll() {
+  if (running) return;
+  running = true;
+  document.getElementById("runBtn").disabled = true;
+
+  let passed = 0, failed = 0;
+  const total = CASES.length;
+
+  for (let i = 0; i < CASES.length; i++) {
+    const c = CASES[i];
+    const card = document.getElementById(`card-${c.id}`);
+
+    // animate: show skeleton in judge panel briefly
+    const grid = card.querySelector(".checks-grid");
+    grid.innerHTML = assertionPanel(c, "checking") + skeletonJudge() + humanPanel(c, "checking");
+    await delay(600 + Math.random() * 600);
+
+    // compute overall
+    const codeResults = c.assertions.map(a => a.fn(c.output));
+    const codePass    = codeResults.every(Boolean);
+    const judgePass   = c.judge.verdict === "PASS";
+    const overall     = codePass && judgePass ? "pass" : "fail";
+    overall === "pass" ? passed++ : failed++;
+
+    // update badge
+    const badge = card.querySelector(`#badge-${c.id}`);
+    badge.className = `case-badge ${overall === "pass" ? "badge-pass" : "badge-fail"}`;
+    badge.textContent = overall === "pass" ? "Pass" : "Fail";
+
+    // render final
+    grid.innerHTML = assertionPanel(c, overall) + judgePanel(c, overall) + humanPanel(c, overall);
+
+    // update stats
+    document.getElementById("passNum").textContent = passed;
+    document.getElementById("failNum").textContent = failed;
+    document.getElementById("pendNum").textContent = total - i - 1;
+    document.getElementById("progressFill").style.width = `${((i + 1) / total) * 100}%`;
+    document.getElementById("progressLabel").textContent = `${i + 1} / ${total}`;
+  }
+
+  running = false;
+  document.getElementById("runBtn").disabled = false;
+  document.getElementById("runBtn").textContent = "Re-run";
+}
+
+function skeletonJudge() {
+  return `
+    <div class="check-panel">
+      <div class="check-title"><span class="check-num">2</span>LLM-as-Judge</div>
+      <div class="judge-box pending">
+        <div class="skeleton" style="width:90%"></div>
+        <div class="skeleton" style="width:75%"></div>
+        <div class="skeleton" style="width:60%"></div>
+      </div>
+    </div>`;
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+renderAll();
+</script>
+</body>
+</html>
