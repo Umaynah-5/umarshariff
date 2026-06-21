@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "claude-ocr": {
+      "command": "python3",
+      "args": ["-m", "claude_ocr.server"],
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      }
+    }
+  }
+}
