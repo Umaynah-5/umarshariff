@@ -6,6 +6,13 @@
       "env": {
         "PYTHONPATH": "${workspaceFolder}/src"
       }
+    },
+    "markitdown-mcp": {
+      "command": "python3",
+      "args": ["-m", "markitdown_mcp.server"],
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      }
     }
   }
 }
